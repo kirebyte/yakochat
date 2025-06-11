@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kitsune Box</title>
+    <style>
+        body {
+            background-color: black;
+            color: green;
+            font-family: "Courier New", Courier, monospace;
+        }
+
+        #banner {
+            white-space: pre;
+            color: greenyellow;
+            text-align: center;
+        }
+
+        #messages {
+            height: 500px;
+            overflow-y: scroll;
+            border: 1px solid green;
+            padding: 10px;
+        }
+
+        #chatBox {
+            width: 99%;
+            padding: 10px;
+            background-color: black;
+            color: greenyellow;
+            border: none;
+            outline: none;
+            caret-color: white;
+        }
+
+        #copyButton {
+            padding: 10px;
+            background-color: #004d00; /* Dark green */
+            color: greenyellow;
+            border: none;
+            cursor: pointer;
+            text-align: center;
+            font-family: "Courier New", Courier, monospace;
+        }
+
+        #copyButton:hover {
+            background-color: #006600; /* Slightly lighter green when hovering */
+        }
+
+        .divider {
+            width: 100%;
+            height: 1px;
+            background-color: greenyellow;
+            margin: 10px 0;
+        }
+
+        #feedback {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #004d00;
+            color: greenyellow;
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+            font-family: "Courier New", Courier, monospace;
+        }
+
+        #cheatsheet {
+            color: lightgreen;
+            text-align: left;
+            font-size: 14px;
+            display: none;
+        }
+
+        #cheatsheet-toggle {
+            color: lightgreen;
+            text-align: left;
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="banner">
+        ▗▖ ▗▖▗▄▄▄▖▗▄▄▄▖▗▄▄▖▗▖ ▗▖▗▖  ▗▖▗▄▄▄▖    ▗▄▄▖  ▗▄▖ ▗▖  ▗▖
+        ▐▌▗▞▘  █    █ ▐▌   ▐▌ ▐▌▐▛▚▖▐▌▐▌       ▐▌ ▐▌▐▌ ▐▌ ▝▚▞▘ 
+        ▐▛▚▖   █    █  ▝▀▚▖▐▌ ▐▌▐▌ ▝▜▌▐▛▀▀▘    ▐▛▀▚▖▐▌ ▐▌  ▐▌  
+        ▐▌ ▐▌▗▄█▄▖  █ ▗▄▄▞▘▝▚▄▞▘▐▌  ▐▌▐▙▄▄▖    ▐▙▄▞▘▝▚▄▞▘▗▞▘▝▚▖
+    </div>
+
+    <div id="messages"></div>
+
+    <div class="divider"></div>
+    <button id="copyButton">Copy Chat History</button>
+    <div class="divider"></div>
+
+    <textarea id="chatBox" placeholder="Type your message..." rows="4"></textarea>
+
+    <div id="cheatsheet-toggle">
+        Press F1 for cheatsheet.
+    </div>
+
+    <div id="cheatsheet">
+        <p><strong>Ctrl + .</strong> (or Cmd + . on Mac): Copy chat history.</p>
+        <p><strong>Ctrl + Shift + S</strong> (or Cmd + Shift + S on Mac): Download chat history.</p>
+        <p><strong>Ctrl + Shift + Backspace</strong> (or Cmd + Shift + Backspace on Mac): Delete last chat message.</p>
+        <p><strong>Enter</strong>: Send message.</p>
+        <p><strong>Enter + Shift</strong>: Add newline.</p>
+    </div>
+
+    <div id="feedback">Chat history copied to clipboard!</div>
+
+    <script>
+        const chatBox = document.getElementById('chatBox');
+        const messagesDiv = document.getElementById('messages');
+        const copyButton = document.getElementById('copyButton');
+        const feedback = document.getElementById('feedback');
+        const cheatsheet = document.getElementById('cheatsheet');
+        const cheatsheetToggle = document.getElementById('cheatsheet-toggle');
+        let ws;
+
+        // Start WebSocket
+        function startWebSocket() {
+            const wsUrl = `ws://${window.location.host}/ws`;
+            ws = new WebSocket(wsUrl);
+
+            ws.onmessage = function (event) {
+                try {
+                    const data = JSON.parse(event.data); // Parse the received JSON
+                    const message = document.createElement('pre');
+                    message.textContent = data; // Display only the message content without quotes
+                    messagesDiv.appendChild(message);
+                    messagesDiv.scrollTop = messagesDiv.scrollHeight; // Auto scroll
+                } catch (e) {
+                    console.error("Error parsing the JSON message", e);
+                }
+            };
+        }
+
+        function showFeedback(message) {
+            feedback.textContent = message;
+            feedback.style.display = 'block';
+            setTimeout(() => {
+                feedback.style.display = 'none';
+            }, 2000); // Hide after 2 seconds
+        }
+
+        function copyChatHistory() {
+            const messagesText = messagesDiv.innerText;
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(messagesText)
+                    .then(() => {
+                        console.log("Chat history copied to clipboard using navigator.clipboard");
+                        showFeedback("Chat history copied to clipboard!");
+                    })
+                    .catch(err => {
+                        console.error("Failed to copy chat history: ", err);
+                        showFeedback("Failed to copy chat history.");
+                    });
+            } else {
+                const textArea = document.createElement("textarea");
+                textArea.value = messagesText;
+
+                textArea.style.position = 'fixed';
+                textArea.style.top = '0';
+                textArea.style.left = '0';
+                textArea.style.width = '2em';
+                textArea.style.height = '2em';
+                textArea.style.padding = '0';
+                textArea.style.border = 'none';
+                textArea.style.outline = 'none';
+                textArea.style.boxShadow = 'none';
+                textArea.style.background = 'transparent';
+                document.body.appendChild(textArea);
+
+                textArea.focus();
+                textArea.select();
+
+                try {
+                    const successful = document.execCommand('copy');
+                    if (successful) {
+                        console.log('Chat history was successfully copied using document.execCommand');
+                        showFeedback("Chat history copied to clipboard!");
+                    } else {
+                        console.error('Fallback: document.execCommand was unsuccessful');
+                        showFeedback("Failed to copy chat history.");
+                    }
+                } catch (err) {
+                    console.error('Fallback: Oops, unable to copy', err);
+                    showFeedback("Failed to copy chat history.");
+                }
+
+                document.body.removeChild(textArea);
+            }
+        }
+        copyButton.addEventListener('click', copyChatHistory);
+
+        function downloadHistory() {
+            const messagesText = messagesDiv.innerText;
+            const blob = new Blob([messagesText], { type: 'text/plain' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'notas.txt';
+            link.click();
+        }
+
+        const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+        document.addEventListener('keydown', function (event) {
+
+            // Ctrl + . or Cmd + .: Copy chat history
+            if ((isMac ? event.metaKey : event.ctrlKey) && event.key === '.') {
+                event.preventDefault();
+                copyChatHistory();
+                return;
+            }
+
+            // Ctrl + Shift + S or Cmd + Shift + S: Download chat history
+            if ((isMac ? event.metaKey : event.ctrlKey) && event.shiftKey && event.key === 'S') {
+                event.preventDefault();
+                downloadHistory();
+                return;
+            }
+
+            // Ctrl + Shift + Backspace or Cmd + Shift + Backspace: Remove the last message
+            if ((event.ctrlKey && event.shiftKey && event.key === 'Backspace') || (isMac && event.metaKey && event.shiftKey && event.key === 'Backspace')) {
+                event.preventDefault();
+                const lastMessage = messagesDiv.lastElementChild;
+                if (lastMessage) {
+                    messagesDiv.removeChild(lastMessage);
+                }
+                return;
+            }
+
+            chatBox.focus();
+
+            // Send message on Enter
+            if (event.keyCode === 13 && !event.shiftKey) {
+                const msg = chatBox.value;
+                ws.send(JSON.stringify(msg));
+                chatBox.value = '';
+                event.preventDefault();
+            }
+
+            if (event.key === 'F1') {
+                event.preventDefault();
+                if (cheatsheet.style.display === 'none') {
+                    cheatsheet.style.display = 'block';
+                    cheatsheetToggle.style.display = 'none';
+                } else {
+                    cheatsheet.style.display = 'none';
+                    cheatsheetToggle.style.display = 'block';
+                }
+            }
+        });
+
+        window.onload = startWebSocket;
+    </script>
+</body>
+
+</html>
